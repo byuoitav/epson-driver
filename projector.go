@@ -92,3 +92,7 @@ func NewProjector(addr string, opts ...Option) *Projector {
 func (p *Projector) GetInfo(ctx context.Context) (interface{}, error) {
 	return nil, nil
 }
+
+func (p *Projector) GetActiveSignal(ctx context.Context, port string) (bool, error) {
+	return false, nil
+}
