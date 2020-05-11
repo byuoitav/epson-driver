@@ -119,13 +119,13 @@ func (p *Projector) GetMutedByBlock(ctx context.Context, block string) (bool, er
 		return muted, err
 	}
 
-	log.L.Infof("Mute status is %s", muted)
+	log.L.Infof("Mute status is %v", muted)
 	return muted, nil
 }
 
 func (p *Projector) SetMutedByBlock(ctx context.Context, block string, muted bool) error {
 	work := func(conn connpool.Conn) error {
-		log.L.Infof("Setting mute to %s", muted)
+		log.L.Infof("Setting mute to %v", muted)
 		switch muted {
 		case true:
 			cmd := []byte("VOL 0")
@@ -168,7 +168,7 @@ func (p *Projector) SetMutedByBlock(ctx context.Context, block string, muted boo
 		return err
 	}
 
-	log.L.Infof("Mute status is %s", muted)
+	log.L.Infof("Mute status is %v", muted)
 
 	return nil
 }

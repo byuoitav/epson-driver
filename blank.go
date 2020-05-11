@@ -38,12 +38,13 @@ func (p *Projector) GetBlanked(ctx context.Context) (bool, error) {
 		return blanked, err
 	}
 
+	log.L.Infof("Blank status is %v", blanked)
 	return blanked, nil
 }
 
 func (p *Projector) SetBlanked(ctx context.Context, blanked bool) error {
 	work := func(conn connpool.Conn) error {
-		log.L.Infof("Setting blank status to %s", blanked)
+		log.L.Infof("Setting blank status to %v", blanked)
 		var str string
 
 		switch blanked {
@@ -76,6 +77,6 @@ func (p *Projector) SetBlanked(ctx context.Context, blanked bool) error {
 		return err
 	}
 
-	log.L.Infof("Blank status set to %s", blanked)
+	log.L.Infof("Blank status set to %v", blanked)
 	return nil
 }
