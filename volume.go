@@ -103,7 +103,8 @@ func (p *Projector) GetMutedByBlock(ctx context.Context, block string) (bool, er
 		if err != nil {
 			return fmt.Errorf("There was an error getting the volume: %v", err)
 		}
-		checker = strings.Split(checker, "=")[1]
+
+		// checker = strings.Split(checker, "=")[1]
 		checker = strings.Split(checker, "\r")[0]
 
 		num, err := strconv.Atoi(checker)
