@@ -17,13 +17,6 @@ func (p *Projector) GetBlanked(ctx context.Context) (bool, error) {
 
 		cmd := []byte("MUTE?")
 		cmd = append(cmd, 0x0d)
-		enter := []byte{0x45, 0x53, 0x43, 0x2F, 0x56, 0x50, 0x2E, 0x6E, 0x65, 0x74, 0x10, 0x03, 0x00, 0x00, 0x00, 0x00}
-
-		_, err := p.writeAndRead(ctx, conn, enter, 5*time.Second, ' ')
-		if err != nil {
-			log.L.Warnf("there was an error sending the ESC/VP.net command: %v", err)
-			return err
-		}
 
 		checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
 		if err != nil {
