@@ -25,8 +25,15 @@ func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, er
 		if err != nil {
 			return fmt.Errorf("There was an error getting the volume: %v", err)
 		}
-		checker = strings.Split(checker, "=")[1]
-		checker = strings.Split(checker, "\r")[0]
+
+		//get just the number
+		splitChecker := strings.Split(checker, "=")
+		if len(splitChecker) != 2 {
+			return fmt.Errorf("unexpected response: %s", checker)
+		}
+		checker = splitChecker[1]
+		splitChecker = strings.Split(checker, "\r")
+		checker = splitChecker[0]
 
 		//convert and divide by 12 because they have it on a scale of 0-255
 		num, err := strconv.Atoi(checker)
@@ -103,7 +110,7 @@ func (p *Projector) GetMutedByBlock(ctx context.Context, block string) (bool, er
 		if err != nil {
 			return fmt.Errorf("There was an error getting the volume: %v", err)
 		}
-		log.L.Infof("CHECKER: %s", checker)
+		log.L.Debugf("CHECKER: %s", checker)
 
 		splitChecker := strings.Split(checker, "=")
 		if len(splitChecker) != 2 {
