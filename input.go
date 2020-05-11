@@ -13,6 +13,7 @@ func (p *Projector) GetInput(ctx context.Context) (string, error) {
 	var input string
 
 	work := func(conn connpool.Conn) error {
+		log.L.Infof("Getting input")
 
 		cmd := []byte("SOURCE?")
 		cmd = append(cmd, 0x0d)

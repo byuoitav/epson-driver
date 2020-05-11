@@ -17,6 +17,7 @@ func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, er
 	var volume int
 
 	work := func(conn connpool.Conn) error {
+		log.L.Infof("Getting volume")
 
 		cmd := []byte("VOL?")
 		cmd = append(cmd, 0x0d)
@@ -57,6 +58,7 @@ func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, er
 
 func (p *Projector) SetVolumeByBlock(ctx context.Context, block string, volume int) error {
 	work := func(conn connpool.Conn) error {
+		log.L.Infof("Setting volume to %d", volume)
 
 		word := "VOL "
 		bigVolume := volume*12 + 3
@@ -93,6 +95,7 @@ func (p *Projector) GetMutedByBlock(ctx context.Context, block string) (bool, er
 	var muted bool
 
 	work := func(conn connpool.Conn) error {
+		log.L.Infof("Getting mute")
 
 		cmd := []byte("VOL?")
 		cmd = append(cmd, 0x0d)
@@ -116,11 +119,13 @@ func (p *Projector) GetMutedByBlock(ctx context.Context, block string) (bool, er
 		return muted, err
 	}
 
+	log.L.Infof("Mute status is %s", muted)
 	return muted, nil
 }
 
 func (p *Projector) SetMutedByBlock(ctx context.Context, block string, muted bool) error {
 	work := func(conn connpool.Conn) error {
+		log.L.Infof("Setting mute to %s", muted)
 		switch muted {
 		case true:
 			cmd := []byte("VOL 0")
@@ -162,6 +167,8 @@ func (p *Projector) SetMutedByBlock(ctx context.Context, block string, muted boo
 	if err != nil {
 		return err
 	}
+
+	log.L.Infof("Mute status is %s", muted)
 
 	return nil
 }

@@ -69,6 +69,7 @@ func (p *Projector) SetPower(ctx context.Context, power string) error {
 		power = "off"
 	}
 	work := func(conn connpool.Conn) error {
+		log.L.Infof("Setting power to %s", power)
 		var cmd []byte
 
 		switch power {
