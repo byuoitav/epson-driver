@@ -1,102 +1,78 @@
 package epson
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"time"
-
-	"github.com/byuoitav/common/log"
-	"github.com/byuoitav/connpool"
 )
 
 func (p *Projector) GetInput(ctx context.Context) (string, error) {
+	p.infof("Getting current input")
+
+	cmd := []byte("SOURCE?\r")
+
+	resp, err := p.sendCommand(ctx, cmd, ':')
+	if err != nil {
+		return "", err
+	}
+
 	var input string
 
-	work := func(conn connpool.Conn) error {
-		log.L.Infof("Getting input")
-
-		cmd := []byte("SOURCE?")
-		cmd = append(cmd, 0x0d)
-		checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
-		if err != nil {
-			return fmt.Errorf("There was an error getting the input: %v", err)
-		}
-
-		switch checker {
-		case "SOURCE=30\r:":
-			input = "HDMI"
-		case "SOURCE=A0\r:":
-			input = "DVI-D"
-		case "SOURCE=11\r:":
-			input = "computer"
-		case "SOURCE=53\r:":
-			input = "LAN"
-		case "SOURCE=80\r:":
-			input = "HDBaseT"
-		case "SOURCE=B1\r:":
-			input = "BNC"
-		case "SOURCE=60\r:":
-			input = "SDI"
-		default:
-			return fmt.Errorf("unknown source response '%s'", checker)
-		}
-		return nil
+	switch {
+	case bytes.Contains(resp, []byte("SOURCE=30")):
+		input = "HDMI"
+	case bytes.Contains(resp, []byte("SOURCE=A0")):
+		input = "DVI-D"
+	case bytes.Contains(resp, []byte("SOURCE=11")):
+		input = "computer"
+	case bytes.Contains(resp, []byte("SOURCE=53")):
+		input = "LAN"
+	case bytes.Contains(resp, []byte("SOURCE=80")):
+		input = "HDBaseT"
+	case bytes.Contains(resp, []byte("SOURCE=B1")):
+		input = "BNC"
+	case bytes.Contains(resp, []byte("SOURCE=60")):
+		input = "SDI"
+	default:
+		return "", fmt.Errorf("unknown input: %#x", resp)
 	}
 
-	err := p.Pool.Do(ctx, work)
-	if err != nil {
-		return input, err
-	}
-
+	p.infof("Current input is %s", input)
 	return input, nil
 }
 
 func (p *Projector) SetInput(ctx context.Context, input string) error {
-	var str string
+	p.infof("Setting input to %v", input)
+
+	var cmd []byte
 	switch input {
 	case "HDMI":
-		str = "30"
+		cmd = []byte("SOURCE 30\r")
 	case "DVI-D":
-		str = "A0"
+		cmd = []byte("SOURCE A0\r")
 	case "computer":
-		str = "11"
+		cmd = []byte("SOURCE 11\r")
 	case "LAN":
-		str = "53"
+		cmd = []byte("SOURCE 53\r")
 	case "HDBaseT":
-		str = "80"
+		cmd = []byte("SOURCE 80\r")
 	case "BNC":
-		str = "B1"
+		cmd = []byte("SOURCE B1\r")
 	case "SDI":
-		str = "60"
+		cmd = []byte("SOURCE 60\r")
 	default:
-		return fmt.Errorf("unknown source input '%s'", input)
+		return fmt.Errorf("invalid input")
 	}
 
-	work := func(conn connpool.Conn) error {
-
-		cmd := []byte(fmt.Sprintf("SOURCE %s", str))
-		cmd = append(cmd, 0x0d)
-		checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
-		if err != nil {
-			return fmt.Errorf("There was an error setting the input: %v", err)
-		}
-
-		bytes := fmt.Sprintf("%x", checker)
-
-		if bytes != "3a" {
-			return fmt.Errorf("There was an error executing the command - %s", bytes)
-		}
-
-		log.L.Infof("input changed: %v", input)
-		return nil
-	}
-
-	err := p.Pool.Do(ctx, work)
+	resp, err := p.sendCommand(ctx, cmd, ':')
 	if err != nil {
 		return err
 	}
 
-	//TODO remove?
-	time.Sleep(25 * time.Second)
+	if !bytes.Equal(bytes.TrimSpace(resp), []byte{0x3a}) {
+		return fmt.Errorf("error from projector: %#x", resp)
+	}
+
+	p.infof("Successfully set input")
 	return nil
 }

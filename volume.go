@@ -1,189 +1,56 @@
 package epson
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/byuoitav/common/log"
-	"github.com/byuoitav/connpool"
 )
 
-var currentVolume int
-
 func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, error) {
-	var volume int
+	p.infof("Getting volume")
 
-	work := func(conn connpool.Conn) error {
-		log.L.Infof("Getting volume")
+	cmd := []byte("VOL?\r")
 
-		cmd := []byte("VOL?")
-		cmd = append(cmd, 0x0d)
-		checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
-		if err != nil {
-			return fmt.Errorf("There was an error getting the volume: %v", err)
-		}
-
-		//get just the number
-		splitChecker := strings.Split(checker, "=")
-		if len(splitChecker) != 2 {
-			return fmt.Errorf("unexpected response: %s", checker)
-		}
-		checker = splitChecker[1]
-		splitChecker = strings.Split(checker, "\r")
-		checker = splitChecker[0]
-
-		//convert and divide by 12 because they have it on a scale of 0-255
-		num, err := strconv.Atoi(checker)
-		if err != nil {
-			log.L.Warnf("Error converting to int %v\n", err)
-		}
-
-		num = num / 12
-
-		log.L.Infof("The volume level is %v", num)
-
-		if num > 20 || num < 0 {
-			log.L.Warnf("Volume out of range: %d", num)
-			return fmt.Errorf("volume out of range: %d", num)
-		}
-
-		volume = num
-		return nil
-	}
-
-	err := p.Pool.Do(ctx, work)
+	resp, err := p.sendCommand(ctx, cmd, ':')
 	if err != nil {
-		return volume, err
+		return 0, err
 	}
-	currentVolume = volume
 
-	return volume, nil
+	p.infof("volume response: %s", resp)
+
+	str := strings.TrimSpace(string(resp))
+	split := strings.Split(str, "=")
+	if len(split) != 2 {
+		return 0, fmt.Errorf("unexpected response from projector: %#x", resp)
+	}
+
+	num, err := strconv.Atoi(split[0])
+	if err != nil {
+		return 0, fmt.Errorf("unable to convert %q to int: %w", split[0], err)
+	}
+
+	num = num / 12
+
+	p.infof("Volume is %v", num)
+	return num, nil
 }
 
 func (p *Projector) SetVolumeByBlock(ctx context.Context, block string, volume int) error {
-	work := func(conn connpool.Conn) error {
-		log.L.Infof("Setting volume to %d", volume)
+	p.infof("Setting volume to %v", volume)
 
-		word := "VOL "
-		bigVolume := volume*12 + 3
-		newVolume := strconv.Itoa(bigVolume)
-		word += newVolume
-		cmd := []byte(word)
-		cmd = append(cmd, 0x0d)
-		checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
-		if err != nil {
-			return fmt.Errorf("There was an error setting the volume: %v", err)
-		}
+	cmd := []byte(fmt.Sprintf("VOL %v\r", volume*12+3))
 
-		bytes := fmt.Sprintf("%x", checker)
-
-		if bytes != "3a" {
-			return fmt.Errorf("There was an error executing the command - %s", bytes)
-		}
-
-		log.L.Infof("Volume set to %d", volume)
-		currentVolume = volume
-		return nil
-
-	}
-
-	err := p.Pool.Do(ctx, work)
+	resp, err := p.sendCommand(ctx, cmd, ':')
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (p *Projector) GetMutedByBlock(ctx context.Context, block string) (bool, error) {
-	var muted bool
-
-	work := func(conn connpool.Conn) error {
-		log.L.Infof("Getting mute")
-
-		cmd := []byte("VOL?")
-		cmd = append(cmd, 0x0d)
-		checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
-		if err != nil {
-			return fmt.Errorf("There was an error getting the volume: %v", err)
-		}
-		log.L.Debugf("CHECKER: %s", checker)
-
-		splitChecker := strings.Split(checker, "=")
-		if len(splitChecker) != 2 {
-			return fmt.Errorf("unexpected response received: %v", checker)
-		}
-
-		checker = splitChecker[1]
-		splitChecker = strings.Split(checker, "\r")
-		checker = splitChecker[0]
-
-		num, err := strconv.Atoi(checker)
-		if err != nil {
-			log.L.Warnf("Error converting to int %v\n", err)
-		}
-		muted = (num == 0)
-		return nil
+	if !bytes.Equal(bytes.TrimSpace(resp), []byte{0x3a}) {
+		return fmt.Errorf("error from projector: %#x", resp)
 	}
 
-	err := p.Pool.Do(ctx, work)
-	if err != nil {
-		return muted, err
-	}
-
-	log.L.Infof("Mute status is %v", muted)
-	return muted, nil
-}
-
-func (p *Projector) SetMutedByBlock(ctx context.Context, block string, muted bool) error {
-	work := func(conn connpool.Conn) error {
-		log.L.Infof("Setting mute to %v", muted)
-		switch muted {
-		case true:
-			cmd := []byte("VOL 0")
-			cmd = append(cmd, 0x0d)
-			checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
-			if err != nil {
-				return fmt.Errorf("There was an error muting: %v", err)
-			}
-
-			bytes := fmt.Sprintf("%x", checker)
-
-			if bytes != "3a" {
-				return fmt.Errorf("There was an error executing the command - %s", bytes)
-			}
-
-			return nil
-		case false:
-			str := "VOL " + strconv.Itoa(currentVolume*12+3)
-			cmd := []byte(str)
-			cmd = append(cmd, 0x0d)
-			checker, err := p.writeAndRead(ctx, conn, cmd, 5*time.Second, ':')
-			if err != nil {
-				return fmt.Errorf("There was an error unmuting: %v", err)
-			}
-
-			bytes := fmt.Sprintf("%x", checker)
-
-			if bytes != "3a" {
-				return fmt.Errorf("There was an error executing the command - %s", bytes)
-			}
-
-			return nil
-		default:
-			return fmt.Errorf("unexpected mute state '%v'", muted)
-		}
-	}
-
-	err := p.Pool.Do(ctx, work)
-	if err != nil {
-		return err
-	}
-
-	log.L.Infof("Mute status is %v", muted)
-
+	p.infof("Successfully set volume status")
 	return nil
 }

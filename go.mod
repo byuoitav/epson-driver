@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/byuoitav/common v0.0.0-20191210190714-e9b411b3cc0d
-	github.com/byuoitav/connpool v0.1.5
+	github.com/byuoitav/connpool v0.4.1
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/labstack/echo v3.3.10+incompatible // indirect
 	github.com/labstack/gommon v0.3.0 // indirect
