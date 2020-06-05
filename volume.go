@@ -11,6 +11,13 @@ import (
 func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, error) {
 	p.infof("Getting volume")
 
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to get volume: %s", err)
+		}
+	}()
+
 	cmd := []byte("VOL?\r")
 
 	resp, err := p.sendCommand(ctx, cmd, ':')
@@ -39,6 +46,13 @@ func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, er
 
 func (p *Projector) SetVolumeByBlock(ctx context.Context, block string, volume int) error {
 	p.infof("Setting volume to %v", volume)
+
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to set volume: %s", err)
+		}
+	}()
 
 	cmd := []byte(fmt.Sprintf("VOL %v\r", volume*12+3))
 

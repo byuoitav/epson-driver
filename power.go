@@ -4,10 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 )
 
 func (p *Projector) GetPower(ctx context.Context) (string, error) {
 	p.infof("Getting power status")
+
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to get power: %s", err)
+		}
+	}()
 
 	cmd := []byte("PWR?\r")
 
@@ -43,6 +51,13 @@ func (p *Projector) GetPower(ctx context.Context) (string, error) {
 func (p *Projector) SetPower(ctx context.Context, power string) error {
 	p.infof("Setting power to %v", power)
 
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to set power: %s", err)
+		}
+	}()
+
 	cmd := []byte("PWR OFF\r")
 	if power == "on" {
 		cmd = []byte("PWR ON\r")
@@ -57,6 +72,7 @@ func (p *Projector) SetPower(ctx context.Context, power string) error {
 		return fmt.Errorf("error from projector: %#x", resp)
 	}
 
+	time.Sleep(4000 * time.Millisecond)
 	p.infof("Successfully set power status")
 	return nil
 }

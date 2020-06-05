@@ -9,6 +9,23 @@ import (
 func (p *Projector) GetBlanked(ctx context.Context) (bool, error) {
 	p.infof("Getting blanked status")
 
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to get blanked: %s", err)
+		}
+	}()
+
+	// check if it's powered off
+	power, err := p.GetPower(ctx)
+	if err != nil {
+		return false, fmt.Errorf("unable to check power state: %w", err)
+	}
+
+	if power == "standby" {
+		return p.lastKnownBlanked, nil
+	}
+
 	cmd := []byte("MUTE?\r")
 
 	resp, err := p.sendCommand(ctx, cmd, ':')
@@ -19,9 +36,11 @@ func (p *Projector) GetBlanked(ctx context.Context) (bool, error) {
 	switch {
 	case bytes.Contains(resp, []byte("MUTE=ON")):
 		p.infof("Blanked status is true")
+		p.lastKnownBlanked = true
 		return true, nil
 	case bytes.Contains(resp, []byte("MUTE=OFF")):
 		p.infof("Blanked status is false")
+		p.lastKnownBlanked = false
 		return false, nil
 	default:
 		return false, fmt.Errorf("unknown blanked state: %#x", resp)
@@ -30,6 +49,24 @@ func (p *Projector) GetBlanked(ctx context.Context) (bool, error) {
 
 func (p *Projector) SetBlanked(ctx context.Context, blanked bool) error {
 	p.infof("Setting blanked to %v", blanked)
+
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to set blanked: %s", err)
+		}
+	}()
+
+	// check if it's powered off
+	power, err := p.GetPower(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to check power state: %w", err)
+	}
+
+	if power == "standby" {
+		// pretend like it worked
+		return nil
+	}
 
 	cmd := []byte("MUTE OFF\r")
 	if blanked {

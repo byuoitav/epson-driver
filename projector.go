@@ -15,6 +15,9 @@ type Projector struct {
 	pool    *connpool.Pool
 
 	logger Logger
+
+	lastKnownInput   string
+	lastKnownBlanked bool
 }
 
 func NewProjector(addr string, opts ...Option) *Projector {
@@ -34,7 +37,9 @@ func NewProjector(addr string, opts ...Option) *Projector {
 			Delay:  options.delay,
 			Logger: options.logger,
 		},
-		logger: options.logger,
+		logger:           options.logger,
+		lastKnownInput:   "hdbaset",
+		lastKnownBlanked: false,
 	}
 
 	p.pool.NewConnection = func(ctx context.Context) (net.Conn, error) {
@@ -46,7 +51,7 @@ func NewProjector(addr string, opts ...Option) *Projector {
 
 		deadline, ok := ctx.Deadline()
 		if !ok {
-			deadline = time.Now().Add(3 * time.Second)
+			deadline = time.Now().Add(5 * time.Second)
 		}
 
 		conn.SetDeadline(deadline)
@@ -64,6 +69,19 @@ func NewProjector(addr string, opts ...Option) *Projector {
 			return conn, fmt.Errorf("unable to write new connection string: wrote %d/%d bytes", n, len(cmd))
 		}
 
+		resp := make([]byte, len(cmd))
+
+		// read the same thing back
+		n, err = conn.Read(resp)
+		switch {
+		case err != nil:
+			conn.Close()
+			return conn, fmt.Errorf("unable to read new connection string: %w", err)
+		case n != len(cmd):
+			conn.Close()
+			return conn, fmt.Errorf("unable to read new connection string: read %d/%d bytes", n, len(cmd))
+		}
+
 		return conn, nil
 	}
 
@@ -76,10 +94,11 @@ func (p *Projector) sendCommand(ctx context.Context, cmd []byte, delim byte) ([]
 	err := p.pool.Do(ctx, func(conn connpool.Conn) error {
 		deadline, ok := ctx.Deadline()
 		if !ok {
-			deadline = time.Now().Add(3 * time.Second)
+			deadline = time.Now().Add(10 * time.Second)
 		}
 
 		conn.SetWriteDeadline(deadline)
+		p.debugf("Sending command: %#x", cmd)
 
 		n, err := conn.Write(cmd)
 		switch {

@@ -9,6 +9,24 @@ import (
 func (p *Projector) GetInput(ctx context.Context) (string, error) {
 	p.infof("Getting current input")
 
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to get input: %s", err)
+		}
+	}()
+
+	// check if it's powered off
+	power, err := p.GetPower(ctx)
+	if err != nil {
+		return "", fmt.Errorf("unable to check power state: %w", err)
+	}
+
+	if power == "standby" {
+		// pretend like the default input is HDBaseT?
+		return p.lastKnownInput, nil
+	}
+
 	cmd := []byte("SOURCE?\r")
 
 	resp, err := p.sendCommand(ctx, cmd, ':')
@@ -20,48 +38,67 @@ func (p *Projector) GetInput(ctx context.Context) (string, error) {
 
 	switch {
 	case bytes.Contains(resp, []byte("SOURCE=30")):
-		input = "HDMI"
+		input = "hdmi"
 	case bytes.Contains(resp, []byte("SOURCE=A0")):
-		input = "DVI-D"
+		input = "dvi-d"
 	case bytes.Contains(resp, []byte("SOURCE=11")):
 		input = "computer"
 	case bytes.Contains(resp, []byte("SOURCE=53")):
-		input = "LAN"
+		input = "lan"
 	case bytes.Contains(resp, []byte("SOURCE=80")):
-		input = "HDBaseT"
+		input = "hdbaset"
 	case bytes.Contains(resp, []byte("SOURCE=B1")):
-		input = "BNC"
+		input = "bnc"
 	case bytes.Contains(resp, []byte("SOURCE=60")):
-		input = "SDI"
+		input = "sdi"
 	default:
 		return "", fmt.Errorf("unknown input: %#x", resp)
 	}
 
 	p.infof("Current input is %s", input)
+	p.lastKnownInput = input
 	return input, nil
 }
 
 func (p *Projector) SetInput(ctx context.Context, input string) error {
 	p.infof("Setting input to %v", input)
 
+	var err error
+	defer func() {
+		if err != nil {
+			p.warnf("unable to set input: %s", err)
+		}
+	}()
+
 	var cmd []byte
 	switch input {
-	case "HDMI":
+	case "hdmi":
 		cmd = []byte("SOURCE 30\r")
-	case "DVI-D":
+	case "dvi-d":
 		cmd = []byte("SOURCE A0\r")
 	case "computer":
 		cmd = []byte("SOURCE 11\r")
-	case "LAN":
+	case "lan":
 		cmd = []byte("SOURCE 53\r")
-	case "HDBaseT":
+	case "hdbaset":
 		cmd = []byte("SOURCE 80\r")
-	case "BNC":
+	case "bnc":
 		cmd = []byte("SOURCE B1\r")
-	case "SDI":
+	case "sdi":
 		cmd = []byte("SOURCE 60\r")
 	default:
 		return fmt.Errorf("invalid input")
+	}
+
+	// check if it's powered off
+	power, err := p.GetPower(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to check power state: %w", err)
+	}
+
+	if power == "standby" {
+		// pretend like it worked
+		return nil
 	}
 
 	resp, err := p.sendCommand(ctx, cmd, ':')
