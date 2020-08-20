@@ -38,13 +38,21 @@ func (p *Projector) GetInput(ctx context.Context) (string, error) {
 
 	switch {
 	case bytes.Contains(resp, []byte("SOURCE=30")):
-		input = "hdmi"
+		input = "hdmi1"
 	case bytes.Contains(resp, []byte("SOURCE=A0")):
-		input = "dvi-d"
-	case bytes.Contains(resp, []byte("SOURCE=11")):
+		input = "hdmi2"
+	case bytes.Contains(resp, []byte("SOURCE=C0")):
+		input = "hdmi3"
+	case bytes.Contains(resp, []byte("SOURCE=10")):
 		input = "computer"
+	case bytes.Contains(resp, []byte("SOURCE=52")):
+		input = "USB1"
+	case bytes.Contains(resp, []byte("SOURCE=54")):
+		input = "USB2"
 	case bytes.Contains(resp, []byte("SOURCE=53")):
 		input = "lan"
+	case bytes.Contains(resp, []byte("SOURCE=56")):
+		input = "screenmirroring1"
 	case bytes.Contains(resp, []byte("SOURCE=80")):
 		input = "hdbaset"
 	case bytes.Contains(resp, []byte("SOURCE=B1")):
