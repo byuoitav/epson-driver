@@ -5,10 +5,10 @@ import (
 	"errors"
 )
 
-func (p *Projector) GetMutedByBlock(ctx context.Context, block string) (bool, error) {
-	return false, errors.New("not implemented")
+func (p *Projector) GetMutes(ctx context.Context, blocks []string) (map[string]bool, error) {
+	return nil, errors.New("not implemented")
 }
 
-func (p *Projector) SetMutedByBlock(ctx context.Context, block string, muted bool) error {
+func (p *Projector) SetMute(ctx context.Context, block string, muted bool) error {
 	return errors.New("not implemented")
 }

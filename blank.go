@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func (p *Projector) GetBlanked(ctx context.Context) (bool, error) {
+func (p *Projector) GetBlank(ctx context.Context) (bool, error) {
 	p.infof("Getting blanked status")
 
 	var err error
@@ -47,7 +47,7 @@ func (p *Projector) GetBlanked(ctx context.Context) (bool, error) {
 	}
 }
 
-func (p *Projector) SetBlanked(ctx context.Context, blanked bool) error {
+func (p *Projector) SetBlank(ctx context.Context, blanked bool) error {
 	p.infof("Setting blanked to %v", blanked)
 
 	var err error

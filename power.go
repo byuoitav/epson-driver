@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (p *Projector) GetPower(ctx context.Context) (string, error) {
+func (p *Projector) GetPower(ctx context.Context) (bool, error) {
 	p.infof("Getting power status")
 
 	var err error
@@ -21,13 +21,13 @@ func (p *Projector) GetPower(ctx context.Context) (string, error) {
 
 	resp, err := p.sendCommand(ctx, cmd, ':')
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
 	switch {
 	case bytes.Contains(resp, []byte("PWR=01")):
 		p.infof("Power status is 'on'")
-		return "on", nil
+		return true, nil
 	case bytes.Contains(resp, []byte("PWR=00")):
 		fallthrough
 	case bytes.Contains(resp, []byte("PWR=02")):
@@ -42,13 +42,13 @@ func (p *Projector) GetPower(ctx context.Context) (string, error) {
 		fallthrough
 	case bytes.Contains(resp, []byte("PWR=09")):
 		p.infof("Power status is 'standby'")
-		return "standby", nil
+		return false, nil
 	default:
-		return "", fmt.Errorf("unknown power state: %#x", resp)
+		return false, fmt.Errorf("unknown power state: %#x", resp)
 	}
 }
 
-func (p *Projector) SetPower(ctx context.Context, power string) error {
+func (p *Projector) SetPower(ctx context.Context, power bool) error {
 	p.infof("Setting power to %v", power)
 
 	var err error
@@ -59,7 +59,7 @@ func (p *Projector) SetPower(ctx context.Context, power string) error {
 	}()
 
 	cmd := []byte("PWR OFF\r")
-	if power == "on" {
+	if power {
 		cmd = []byte("PWR ON\r")
 	}
 

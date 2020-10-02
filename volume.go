@@ -12,7 +12,7 @@ import (
 // Scale on projector is 0-243
 const _volumeConversionFactor = 243.0 / 100.0
 
-func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, error) {
+func (p *Projector) GetVolumes(ctx context.Context, blocks []string) (map[string]int, error) {
 	p.infof("Getting volume")
 
 	var err error
@@ -26,7 +26,7 @@ func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, er
 
 	resp, err := p.sendCommand(ctx, cmd, ':')
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	p.infof("volume response: %s", resp)
@@ -35,22 +35,22 @@ func (p *Projector) GetVolumeByBlock(ctx context.Context, block string) (int, er
 	str := strings.TrimSpace(strings.TrimRight(string(resp), ":"))
 	split := strings.Split(str, "=")
 	if len(split) != 2 {
-		return 0, fmt.Errorf("unexpected response from projector: %#x", resp)
+		return nil, fmt.Errorf("unexpected response from projector: %#x", resp)
 	}
 
 	num, err := strconv.Atoi(split[1])
 	if err != nil {
-		return 0, fmt.Errorf("unable to convert %q to int: %w", split[0], err)
+		return nil, fmt.Errorf("unable to convert %q to int: %w", split[0], err)
 	}
 
 	// Convert from 0-255 scale to 0-100 scale
 	num = int(math.Round(float64(num) / _volumeConversionFactor))
 
 	p.infof("Volume is %v", num)
-	return num, nil
+	return map[string]int{"": num}, nil
 }
 
-func (p *Projector) SetVolumeByBlock(ctx context.Context, block string, volume int) error {
+func (p *Projector) SetVolume(ctx context.Context, block string, volume int) error {
 	p.infof("Setting volume to %v", volume)
 
 	// Convert from 0-100 scale to 0-255 scale

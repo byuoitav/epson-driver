@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func (p *Projector) GetInput(ctx context.Context) (string, error) {
+func (p *Projector) GetAudioVideoInputs(ctx context.Context) (map[string]string, error) {
 	p.infof("Getting current input")
 
 	var err error
@@ -19,19 +19,19 @@ func (p *Projector) GetInput(ctx context.Context) (string, error) {
 	// check if it's powered off
 	power, err := p.GetPower(ctx)
 	if err != nil {
-		return "", fmt.Errorf("unable to check power state: %w", err)
+		return nil, fmt.Errorf("unable to check power state: %w", err)
 	}
 
 	if power == "standby" {
 		// pretend like the default input is HDBaseT?
-		return p.lastKnownInput, nil
+		return map[string]string{"": p.lastKnownInput}, nil
 	}
 
 	cmd := []byte("SOURCE?\r")
 
 	resp, err := p.sendCommand(ctx, cmd, ':')
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var input string
@@ -60,15 +60,15 @@ func (p *Projector) GetInput(ctx context.Context) (string, error) {
 	case bytes.Contains(resp, []byte("SOURCE=60")):
 		input = "sdi"
 	default:
-		return "", fmt.Errorf("unknown input: %#x", resp)
+		return nil, fmt.Errorf("unknown input: %#x", resp)
 	}
 
 	p.infof("Current input is %s", input)
 	p.lastKnownInput = input
-	return input, nil
+	return map[string]string{"": input}, nil
 }
 
-func (p *Projector) SetInput(ctx context.Context, input string) error {
+func (p *Projector) SetAudioVideoInput(ctx context.Context, output, input string) error {
 	p.infof("Setting input to %v", input)
 
 	var err error
